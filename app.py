@@ -30,10 +30,17 @@ chain = LLMChain(llm=llm, prompt=prompt)
 @app.command("/add-task")
 def handle_add_task(ack, body, say):
     ack()
-    text = body["text"]  # 例: "資料作成 明日まで"
-    task, due = text.split(" ", 1)
-    result = chain.run(user_input=text, task=task, due=due)
-    say(f"タスク追加したよっ💕\n{result}")
+    text = body.get("text", "")
+    try:
+        task, due = text.split(" ", 1)
+    except ValueError:
+        say("ごめんね💦 `/add-task タイトル 期限` の形で送ってねっ🌸")
+        return
+    try:
+        result = chain.run(user_input=text, task=task, due=due)
+        say(f"タスク追加したよっ💕\n{result}")
+    except Exception as e:
+        say(f"エラーが起きちゃった…😢\n```{e}```")
 
 if __name__ == "__main__":
     app.start(port=int(os.getenv("PORT", 3000)))
