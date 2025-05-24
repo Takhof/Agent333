@@ -73,7 +73,7 @@ def handle_add_task(ack, body, say):
     text = body.get("text", "")
     channel = body.get('channel_id')
     try:
-        title, due_str = text.split(" ", 1)
+        title, due_str = text.rsplit(" ", 1)
         due = datetime.fromisoformat(due_str)
     except ValueError:
         say("ごめんね💦 `/add-task タイトル YYYY-MM-DDThh:mm` の形式で入力してねっ🌸")
