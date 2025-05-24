@@ -4,11 +4,14 @@ from slack_bolt import App
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
+from slack_bolt.adapter.socket_mode import SocketModeHandler
+
 
 # 環境変数読み込み
 load_dotenv()
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
+SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Slack Bolt アプリ初期化
@@ -56,6 +59,6 @@ def handle_add_task(ack, body, say):
     except Exception as e:
         say(f"エラーが起きちゃった…😢\n```{e}```")
 
-if __name__ == "__main__":
-    # ポートのみ指定して起動
-    app.start(port=int(os.getenv("PORT", 3000)))
+if __name__ == '__main__':
+    handler = SocketModeHandler(app, SLACK_APP_TOKEN)
+    handler.start()
