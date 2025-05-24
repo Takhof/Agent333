@@ -44,7 +44,20 @@ ack_template = """ユーザーがタスクを追加しました。AIはかわい
 prompt_ack = PromptTemplate(input_variables=["task_info"], template=ack_template)
 chain_ack = LLMChain(llm=llm, prompt=prompt_ack)
 
-# 3. 完了お祝いメッセージ生成用プロンプトとチェーン
+# 3. タスク時間見積もり用プロンプトとチェーン
+estimate_template = """ユーザーが追加したタスクの完了に必要な時間を、具体的に見積もって提案してください。
+
+タスク情報:
+{task_info}
+
+【返信する文章】"""
+prompt_estimate = PromptTemplate(
+    input_variables=["task_info"],
+    template=estimate_template
+)
+chain_estimate = LLMChain(llm=llm, prompt=prompt_estimate)
+
+# 4. 完了お祝いメッセージ生成用プロンプトとチェーン
 complete_template = """ユーザーがタスクを完了しました。AIはかわいらしく、あたたかい言葉で祝福してください。
 
 タスクタイトル: {title}
@@ -78,7 +91,7 @@ def check_reminders():
 scheduler.add_job(check_reminders, 'interval', minutes=1)
 scheduler.start()
 
-# 3. Slash コマンドハンドラ
+# 5. Slash コマンドハンドラ
 @app.command("/add-task")
 def handle_add_task(ack, body, say):
     global id_counter
@@ -106,6 +119,8 @@ def handle_add_task(ack, body, say):
     # AIでお礼メッセージ生成
     reply = chain_ack.run(task_info=info)
     say(reply)
+    estimate = chain_estimate.run(task_info=info)
+    say(estimate)
 
 # /list-tasks: タスク一覧表示
 @app.command("/list-tasks")
@@ -152,7 +167,7 @@ def handle_complete_task(ack, body, say):
     else:
         say(f"ごめんね…指定したタスクが見つからなかったよ…❓")
 
-        
+
 # /add-task-modal: モーダルでタスク追加
 @app.command("/add-task-modal")
 def open_modal(ack, body, client):
