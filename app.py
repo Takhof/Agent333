@@ -44,6 +44,18 @@ ack_template = """ユーザーがタスクを追加しました。AIはかわい
 prompt_ack = PromptTemplate(input_variables=["task_info"], template=ack_template)
 chain_ack = LLMChain(llm=llm, prompt=prompt_ack)
 
+# 3. 完了お祝いメッセージ生成用プロンプトとチェーン
+complete_template = """ユーザーがタスクを完了しました。AIはかわいらしく、あたたかい言葉で祝福してください。
+
+タスクタイトル: {title}
+
+【返信する文章】"""
+prompt_complete = PromptTemplate(
+    input_variables=["title"],
+    template=complete_template
+)
+chain_complete = LLMChain(llm=llm, prompt=prompt_complete)
+
 # タスクストレージ設定
 tasks = []  # 格納フォーマット: {'id', 'title', 'due', 'channel', 'completed'}
 id_counter = 1
@@ -109,24 +121,38 @@ def handle_list_tasks(ack, body, say):
             message += f"{t['id']}. {t['title']} - {status} - {t['due'].isoformat()}\n"
     say(message)
 
+# /complete-task: タスク完了マーク
 @app.command("/complete-task")
 def handle_complete_task(ack, body, say):
     ack()
     text = body.get("text", "").strip()
-    try:
-        tid = int(text)
-    except ValueError:
-        say("使い方: `/complete-task タスクID` で完了マークをつけてね🌸")
-        return
+    completed = False
     with lock:
-        for t in tasks:
-            if t['id'] == tid:
-                t['completed'] = True
-                say(f":white_check_mark: タスク『{t['title']}』を完了にしたよ！")
-                return
-    say(f"ID {tid} のタスクが見つからなかったよ…❓")
+        # 数字IDの場合
+        if text.isdigit():
+            tid = int(text)
+            for t in tasks:
+                if t['id'] == tid:
+                    t['completed'] = True
+                    completed = True
+                    title = t['title']
+                    break
+        # タイトル指定の場合
+        else:
+            for t in tasks:
+                if t['title'] == text:
+                    t['completed'] = True
+                    completed = True
+                    title = t['title']
+                    break
+    if completed:
+        # AIで完了お祝いメッセージ生成
+        celebrate = chain_complete.run(title=title)
+        say(celebrate)
+    else:
+        say(f"ごめんね…指定したタスクが見つからなかったよ…❓")
 
-    
+        
 # /add-task-modal: モーダルでタスク追加
 @app.command("/add-task-modal")
 def open_modal(ack, body, client):
