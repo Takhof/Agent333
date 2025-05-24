@@ -55,13 +55,14 @@ def check_reminders():
     now = datetime.now()
     with lock:
         for t in tasks:
-            if not t['completed'] and now >= t['due'] - timedelta(minutes=30):
+            # 期限30分前リマインダー、かつ未通知のタスクのみ
+            if not t['completed'] and not t.get('notified', False) and now >= t['due'] - timedelta(minutes=30):
                 app.client.chat_postMessage(
                     channel=t['channel'],
-                    text=f":alarm_clock: リマインダー：タスク「{t['title']}」の期限が近づいています！"
+                    text=f":alarm_clock: リマインダー：タスク『{t['title']}』の期限が近づいています！"
                 )
                 # 通知済みフラグを立てる
-                t['completed'] = True
+                t['notified'] = True
 scheduler.add_job(check_reminders, 'interval', minutes=1)
 scheduler.start()
 
@@ -108,6 +109,24 @@ def handle_list_tasks(ack, body, say):
             message += f"{t['id']}. {t['title']} - {status} - {t['due'].isoformat()}\n"
     say(message)
 
+@app.command("/complete-task")
+def handle_complete_task(ack, body, say):
+    ack()
+    text = body.get("text", "").strip()
+    try:
+        tid = int(text)
+    except ValueError:
+        say("使い方: `/complete-task タスクID` で完了マークをつけてね🌸")
+        return
+    with lock:
+        for t in tasks:
+            if t['id'] == tid:
+                t['completed'] = True
+                say(f":white_check_mark: タスク『{t['title']}』を完了にしたよ！")
+                return
+    say(f"ID {tid} のタスクが見つからなかったよ…❓")
+
+    
 # /add-task-modal: モーダルでタスク追加
 @app.command("/add-task-modal")
 def open_modal(ack, body, client):
