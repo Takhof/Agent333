@@ -1,4 +1,6 @@
-This agent will support your day to day work by creating your schedule on slack using LangChain and slack bot.
+This agent will support your day to day work by creating your schedule on slack using LangChain and slack bot. The bot will speak very nicely.
+
+The bot will determine how long it will take, and let you know how to proceed.
 
 Current commands
 /add-task 
