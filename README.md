@@ -11,7 +11,7 @@ Current commands
 
 /complete-task
 
-![image](https://github.com/user-attachments/assets/192b95a4-875c-461a-a280-d2d941ddec93)
+![image](https://github.com/user-attachments/assets/e609bf25-9840-4ca8-b7b0-64c3ac6a5d50)
 
 
 
