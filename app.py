@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import threading
+import re
+from datetime import timedelta
 
 # 環境変数読み込み
 load_dotenv()
@@ -17,8 +19,8 @@ SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
 SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SA_JSON_PATH")    # ← JSON キーのパスを .env に書いておく
-CALENDAR_ID          = os.getenv("GOOGLE_CALENDAR_ID")     # ← 予定を入れたいカレンダーのID
+SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SA_JSON_PATH")   
+CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID")
 
 # building connection to g-calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
@@ -68,6 +70,18 @@ prompt_estimate = PromptTemplate(
     template=estimate_template
 )
 chain_estimate = LLMChain(llm=llm, prompt=prompt_estimate)
+
+#Getting duration from llm
+def parse_duration(text):
+    hours = 0
+    minutes = 0
+    m_h = re.search(r'(\d+)\s*(?:時間|h)', text)
+    if m_h:
+        hours = int(m_h.group(1))
+    m_m = re.search(r'(\d+)\s*(?:分|m)', text)
+    if m_m:
+        minutes = int(m_m.group(1))
+    return timedelta(hours=hours, minutes=minutes)
 
 # 4. 完了お祝いメッセージ生成用プロンプトとチェーン
 complete_template = """ユーザーがタスクを完了しました。AIはかわいらしく、あたたかい言葉で祝福してください。
@@ -131,8 +145,22 @@ def handle_add_task(ack, body, say):
     # AIでお礼メッセージ生成
     reply = chain_ack.run(task_info=info)
     say(reply)
-    estimate = chain_estimate.run(task_info=info)
-    say(estimate)
+    # 所要時間をAIに見積もらせてパース
+    estimate_text = chain_estimate.run(task_info=info)
+    say(estimate_text)
+    duration = parse_duration(estimate_text)
+    start = due - duration
+    end   = due
+    #Google Calendar にイベント作成
+    event_body = {
+    "summary": title,
+    "start": {"dateTime": start.isoformat(), "timeZone": "Asia/Tokyo"},
+    "end":   {"dateTime": end.isoformat(),   "timeZone": "Asia/Tokyo"}
+    }
+    service.events().insert(calendarId=CALENDAR_ID, body=event_body).execute()
+    say("🎉 カレンダーにもスケジュールを追加したよ！")
+
+    
 
 # /list-tasks: タスク一覧表示
 @app.command("/list-tasks")
