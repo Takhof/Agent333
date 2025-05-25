@@ -7,6 +7,8 @@ from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 import threading
 
 # 環境変数読み込み
@@ -15,6 +17,16 @@ SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
 SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SA_JSON_PATH")    # ← JSON キーのパスを .env に書いておく
+CALENDAR_ID          = os.getenv("GOOGLE_CALENDAR_ID")     # ← 予定を入れたいカレンダーのID
+
+# building connection to g-calendar
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+creds  = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES
+)
+service = build('calendar', 'v3', credentials=creds)
+
 
 # Slack Bolt アプリ初期化
 app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
